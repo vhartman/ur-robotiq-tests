@@ -42,7 +42,7 @@ async def test_spacemouse_ur5e_forcemode(gripper_type = GripperType.TWO_FINGER):
     task_frame = [0, 0, 0, 0, 0, 0]
     selection_vector = [1, 1, 1, 1, 1, 1]
     force_type = 2
-    limits = [2, 2, 1.5, 1, 1, 1]
+    limits = [7, 7, 7, 3, 3, 3]
 
     # Execute 500Hz control loop each cycle is 2ms
     sm = SpaceMouseExpert()
@@ -50,23 +50,27 @@ async def test_spacemouse_ur5e_forcemode(gripper_type = GripperType.TWO_FINGER):
     await gripper.connect()
     await gripper.activate()  # calibrates the gripper
 
+    rtde_c.zeroFtSensor()
+
     while True:
         action, buttons = sm.get_action()
 
         t_start = rtde_c.initPeriod()
         print(action)
-        action[:3] = action[:3] * 50.
-        action[3:] = action[3:] * 10.
+        action[:3] = action[:3] * 500
+        action[3:] = action[3:] * 20
 
+        rtde_c.forceModeSetDamping(0.1)
         rtde_c.forceMode(task_frame, selection_vector, action, force_type, limits)
+
         if gripper_type == GripperType.TWO_FINGER:
             await control_2f_gripper(gripper, buttons)
         else:
             await control_vacuum_gripper(gripper, buttons)
 
         rtde_c.waitPeriod(t_start)
-
     rtde_c.forceModeStop()
+
     rtde_c.stopScript()
 
 async def test_spacemouse_ur5e_jog(gripper_type = GripperType.TWO_FINGER):
@@ -92,23 +96,23 @@ async def test_spacemouse_ur5e_jog(gripper_type = GripperType.TWO_FINGER):
         action, buttons = sm.get_action()
         t_start = rtde_c.initPeriod()
 
-        action[3:] = action[3:] * 0.05
-        action[:3] = action[:3] * 0.5
+        action[:3] = action[:3] * 0.2
+        action[3:] = action[3:] * 0.5
 
-        rtde_c.jogStart(action)
+        rtde_c.jogStart(action, feature=RTDEControl.Feature.FEATURE_TOOL)
         if gripper_type == GripperType.TWO_FINGER:
             await control_2f_gripper(gripper, buttons)
         else:
             await control_vacuum_gripper(gripper, buttons)
 
         # log new data
-        idx = (idx + 1) % forces.shape[0]
-        forces[idx, :] = rtde_c.getJointTorques()
+        #idx = (idx + 1) % forces.shape[0]
+        #forces[idx, :] = rtde_c.getJointTorques()
 
         # argument filters the contact detection by direction, all 0 lead to 'detect every contact'
-        is_in_contact[idx, :] = rtde_c.toolContact([0, 0, 0])
+        #is_in_contact[idx, :] = rtde_c.toolContact([0, 0, 0])
 
-        print(forces[idx, :])
+        #print(forces[idx, :])
         #print(is_in_contact[idx, :])
 
         rtde_c.waitPeriod(t_start)
@@ -117,8 +121,8 @@ async def test_spacemouse_ur5e_jog(gripper_type = GripperType.TWO_FINGER):
     rtde_c.stopScript()
 
 def main():
-    #asyncio.run(test_spacemouse_ur5e_forcemode(GripperType.VACUUM))
-    asyncio.run(test_spacemouse_ur5e_jog(GripperType.VACUUM))
+    asyncio.run(test_spacemouse_ur5e_forcemode(GripperType.VACUUM))
+    #asyncio.run(test_spacemouse_ur5e_jog(GripperType.VACUUM))
 
 if __name__ == "__main__":
     main()
