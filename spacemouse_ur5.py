@@ -1,13 +1,27 @@
 from enum import Enum
 import asyncio
 
+import numpy as np
+import argparse
+import sys
+
 from rtde_control import RTDEControlInterface as RTDEControl
 from serl_spacemouse import SpaceMouseExpert
 
 from gripper import Gripper
 from vacuum_gripper import VacuumGripper
 
-import numpy as np
+def parse_args(args):
+    parser = argparse.ArgumentParser(
+        description="spacemouse UR5 tests")
+    parser.add_argument(
+        "-m",
+        dest="mode",
+        help="The mode in which we want to control the robot (force/jog). Default is force.",
+        type=str,
+        default="force")
+
+    return parser.parse_args(args)
 
 class GripperType(Enum):
     """ """
@@ -120,9 +134,15 @@ async def test_spacemouse_ur5e_jog(gripper_type = GripperType.TWO_FINGER):
     rtde_c.jogStop()
     rtde_c.stopScript()
 
-def main():
-    asyncio.run(test_spacemouse_ur5e_forcemode(GripperType.VACUUM))
-    #asyncio.run(test_spacemouse_ur5e_jog(GripperType.VACUUM))
+def main(args):
+    args = parse_args(args)
+
+    if args.mode == "force":
+        asyncio.run(test_spacemouse_ur5e_forcemode(GripperType.VACUUM))
+    elif args.mode == "jog":
+        asyncio.run(test_spacemouse_ur5e_jog(GripperType.VACUUM))
+    else:
+        print("Mode not defined.")
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
